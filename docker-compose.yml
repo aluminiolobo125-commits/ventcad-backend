@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ventcad
+      POSTGRES_PASSWORD: ventcad
+      POSTGRES_DB: ventcad
+    ports:
+      - "5432:5432"
+    volumes:
+      - ventcad_db_data:/var/lib/postgresql/data
+
+  backend:
+    build: .
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: 4000
+      JWT_SECRET: cambia_esta_clave_secreta_en_produccion
+      DATABASE_URL: postgresql://ventcad:ventcad@db:5432/ventcad
+      NODE_ENV: development
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+volumes:
+  ventcad_db_data:

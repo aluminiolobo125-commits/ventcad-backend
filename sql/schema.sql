@@ -1,10 +1,21 @@
 -- Esquema inicial de VentCAD (PostgreSQL)
 -- Ejecutar: psql -d ventcad -f sql/schema.sql
-
 -- Usamos TEXT para los IDs para no depender de la extension pgcrypto
--- (gen_random_uuid no esta disponible en Render Free)
 
-CREATE TABLE IF NOT EXISTS users (
+-- Drop en orden inverso a las dependencias para reemplazar tablas existentes
+DROP TABLE IF EXISTS presupuesto_ventanas;
+DROP TABLE IF EXISTS presupuestos;
+DROP TABLE IF EXISTS reglas_herraje;
+DROP TABLE IF EXISTS reglas_despiece;
+DROP TABLE IF EXISTS vidrios;
+DROP TABLE IF EXISTS herrajes;
+DROP TABLE IF EXISTS perfiles;
+DROP TABLE IF EXISTS series;
+DROP TABLE IF EXISTS obras;
+DROP TABLE IF EXISTS clientes;
+DROP TABLE IF EXISTS users;
+
+CREATE TABLE users (
   id TEXT PRIMARY KEY DEFAULT (md5(random()::text || clock_timestamp()::text)::text),
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
@@ -14,7 +25,7 @@ CREATE TABLE IF NOT EXISTS users (
   actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS clientes (
+CREATE TABLE clientes (
   id TEXT PRIMARY KEY DEFAULT (md5(random()::text || clock_timestamp()::text)::text),
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   nombre TEXT NOT NULL,
@@ -27,7 +38,7 @@ CREATE TABLE IF NOT EXISTS clientes (
   actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS obras (
+CREATE TABLE obras (
   id TEXT PRIMARY KEY DEFAULT (md5(random()::text || clock_timestamp()::text)::text),
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   cliente_id TEXT REFERENCES clientes(id) ON DELETE SET NULL,
@@ -37,7 +48,7 @@ CREATE TABLE IF NOT EXISTS obras (
 );
 
 -- Catálogo base (seed global, user_id NULL = visible para todos)
-CREATE TABLE IF NOT EXISTS series (
+CREATE TABLE series (
   id TEXT PRIMARY KEY DEFAULT (md5(random()::text || clock_timestamp()::text)::text),
   user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
   nombre TEXT NOT NULL,
@@ -50,7 +61,7 @@ CREATE TABLE IF NOT EXISTS series (
   creado_en TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS perfiles (
+CREATE TABLE perfiles (
   id TEXT PRIMARY KEY DEFAULT (md5(random()::text || clock_timestamp()::text)::text),
   serie_id TEXT NOT NULL REFERENCES series(id) ON DELETE CASCADE,
   codigo TEXT NOT NULL,
@@ -63,7 +74,7 @@ CREATE TABLE IF NOT EXISTS perfiles (
   creado_en TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS herrajes (
+CREATE TABLE herrajes (
   id TEXT PRIMARY KEY DEFAULT (md5(random()::text || clock_timestamp()::text)::text),
   serie_id TEXT REFERENCES series(id) ON DELETE SET NULL,
   codigo TEXT,
@@ -77,7 +88,7 @@ CREATE TABLE IF NOT EXISTS herrajes (
   creado_en TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS vidrios (
+CREATE TABLE vidrios (
   id TEXT PRIMARY KEY DEFAULT (md5(random()::text || clock_timestamp()::text)::text),
   nombre TEXT NOT NULL,
   tipo TEXT NOT NULL DEFAULT 'transparente',
@@ -86,7 +97,7 @@ CREATE TABLE IF NOT EXISTS vidrios (
   creado_en TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS reglas_despiece (
+CREATE TABLE reglas_despiece (
   id TEXT PRIMARY KEY DEFAULT (md5(random()::text || clock_timestamp()::text)::text),
   serie_id TEXT NOT NULL REFERENCES series(id) ON DELETE CASCADE,
   rol TEXT NOT NULL,
@@ -101,7 +112,7 @@ CREATE TABLE IF NOT EXISTS reglas_despiece (
   descripcion TEXT
 );
 
-CREATE TABLE IF NOT EXISTS reglas_herraje (
+CREATE TABLE reglas_herraje (
   id TEXT PRIMARY KEY DEFAULT (md5(random()::text || clock_timestamp()::text)::text),
   serie_id TEXT NOT NULL REFERENCES series(id) ON DELETE CASCADE,
   herraje_codigo TEXT NOT NULL,
@@ -110,7 +121,7 @@ CREATE TABLE IF NOT EXISTS reglas_herraje (
 );
 
 -- Presupuestos (cabecera)
-CREATE TABLE IF NOT EXISTS presupuestos (
+CREATE TABLE presupuestos (
   id TEXT PRIMARY KEY DEFAULT (md5(random()::text || clock_timestamp()::text)::text),
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   referencia TEXT NOT NULL,
@@ -130,7 +141,7 @@ CREATE TABLE IF NOT EXISTS presupuestos (
 );
 
 -- Ventanas capturadas dentro de un presupuesto
-CREATE TABLE IF NOT EXISTS presupuesto_ventanas (
+CREATE TABLE presupuesto_ventanas (
   id TEXT PRIMARY KEY DEFAULT (md5(random()::text || clock_timestamp()::text)::text),
   presupuesto_id TEXT NOT NULL REFERENCES presupuestos(id) ON DELETE CASCADE,
   nombre TEXT NOT NULL,

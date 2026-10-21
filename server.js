@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const { pool } = require('./db');
 const authRoutes = require('./routes/auth');
 const clientesRoutes = require('./routes/clientes');
@@ -19,10 +20,46 @@ const PORT = process.env.PORT || 4000;
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
-// Sirve las imágenes de sección de perfil desde public/perfiles
-app.use('/api/perfiles-imagenes', express.static(path.join(__dirname, '../public/perfiles')));
+// Sirve las imágenes de sección de perfil desde backend/public/perfiles
+app.use('/api/perfiles-imagenes', express.static(path.join(__dirname, 'public/perfiles')));
 
-// Health check: verifica que la DB responda
+/**
+ * Ejecuta un archivo SQL dividiendo por ';' y ejecutando cada statement.
+ * Ignora statements vacíos y comentarios de línea.
+ */
+async function ejecutarSqlArchivo(rutaArchivo) {
+  const sql = fs.readFileSync(rutaArchivo, 'utf8');
+  const statements = sql
+    .split(';')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && !s.startsWith('--'));
+  for (const stmt of statements) {
+    try {
+      await pool.query(stmt);
+    } catch (e) {
+      // Ignorar errores de "ya existe" para ser idempotente
+      if (e.message && (e.message.includes('already exists') || e.message.includes('duplicate key'))) {
+        continue;
+      }
+      console.warn('[init] omitiendo statement:', e.message);
+    }
+  }
+}
+
+/** Inicializa la base de datos automáticamente al arrancar. */
+async function initDb() {
+  try {
+    console.log('[init] verificando base de datos...');
+    await ejecutarSqlArchivo(path.join(__dirname, 'sql/schema.sql'));
+    console.log('[init] schema aplicado');
+    await ejecutarSqlArchivo(path.join(__dirname, 'sql/seed.sql'));
+    console.log('[init] seed aplicado');
+  } catch (e) {
+    console.error('[init] error inicializando base de datos:', e.message);
+  }
+}
+
+// Rutas de API
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
@@ -48,6 +85,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Error interno del servidor' });
 });
 
-app.listen(PORT, () => {
-  console.log(`[ventcad-backend] escuchando en http://localhost:${PORT}`);
+// Inicializa DB y arranca el servidor
+initDb().then(() => {
+  app.listen(PORT, () => {
+    console.log(`[ventcad-backend] escuchando en http://localhost:${PORT}`);
+  });
 });

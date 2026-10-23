@@ -13,6 +13,7 @@ const seriesRoutes = require('./routes/series');
 const perfilesRoutes = require('./routes/perfiles');
 const herrajesRoutes = require('./routes/herrajes');
 const reglasRoutes = require('./routes/reglas');
+const modelosRoutes = require('./routes/modelos');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -29,10 +30,15 @@ app.use('/api/perfiles-imagenes', express.static(path.join(__dirname, 'public/pe
  */
 async function ejecutarSqlArchivo(rutaArchivo) {
   const sql = fs.readFileSync(rutaArchivo, 'utf8');
-  const statements = sql
+  // Quita comentarios de línea ANTES de dividir, para no perder el primer statement.
+  const sinComentarios = sql
+    .split('\n')
+    .filter((linea) => !linea.trim().startsWith('--'))
+    .join('\n');
+  const statements = sinComentarios
     .split(';')
     .map((s) => s.trim())
-    .filter((s) => s.length > 0 && !s.startsWith('--'));
+    .filter((s) => s.length > 0);
   for (const stmt of statements) {
     try {
       await pool.query(stmt);
@@ -78,6 +84,7 @@ app.use('/api/series', seriesRoutes);
 app.use('/api/perfiles', perfilesRoutes);
 app.use('/api/herrajes', herrajesRoutes);
 app.use('/api/reglas', reglasRoutes);
+app.use('/api/modelos', modelosRoutes);
 
 // Middleware de errores centralizado
 app.use((err, req, res, next) => {
